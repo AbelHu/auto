@@ -86,26 +86,33 @@ void loop() {
         mode = MODE_DOWN;
       }
     } else {
-      if (mode != MODE_ZERO) {
-        mode = MODE_ZERO;
-        irsend.sendGREE(GREE_26[0], GREE_26[1]);
-        MYPRINTLN("LOG: Temperature is good, change to 26");
+      switch(mode) {
+        case MODE_UP:
+          if (t > 26.2) {
+            mode = MODE_ZERO;
+            irsend.sendGREE(GREE_26[0], GREE_26[1]);
+            MYPRINTLN("LOG: Temperature is good, change to 26");
+          }
+          break;
+        case MODE_DOWN:
+          if (t < 26.3) {
+            mode = MODE_ZERO;
+            irsend.sendGREE(GREE_26[0], GREE_26[1]);
+            MYPRINTLN("LOG: Temperature is good, change to 26");
+          }
+          break;
+        default:
+          break;
       }
     }
 
     MYPRINTLN("LOG: Check humidity");
-    if (h < 60.0) {
-      if (hum_mode != HUM_MODE_ON) {
-        MYPRINTLN("CMD: TURN_ON_SWITCH");
-        hum_mode = HUM_MODE_ON;
-      }
-    } else if (h > 65.0) {
-      if (hum_mode != HUM_MODE_OFF) {
-        MYPRINTLN("CMD: TURN_OFF_SWITCH");
-        hum_mode = HUM_MODE_OFF;
-      }
-    } else {
-      MYPRINTLN("LOG: Do not operate switch");
+    if (h < 60.0 && hum_mode != HUM_MODE_ON) {
+      MYPRINTLN("CMD: TURN_ON_SWITCH");
+      hum_mode = HUM_MODE_ON;
+    } else if (h > 65.0 && hum_mode != HUM_MODE_OFF) {
+      MYPRINTLN("CMD: TURN_OFF_SWITCH");
+      hum_mode = HUM_MODE_OFF;
     }
   } else {
     MYPRINTLN("LOG: SHT31 - Cannot get temperature...");
