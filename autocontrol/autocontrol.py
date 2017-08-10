@@ -62,8 +62,8 @@ def run():
     switch_addr = "192.168.2.31"
     switch_port = 8899
 
-    with open("/root/records.log", "w+") as records:
-        with open("/root/autocontrol.log", "w+") as log:
+    with open("/root/records.log", "a+") as records:
+        with open("/root/autocontrol.log", "a+") as log:
             while True:
                 try:
                     s = serial.Serial("/dev/ttyS0", 57600)

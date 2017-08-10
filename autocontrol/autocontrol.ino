@@ -38,6 +38,7 @@ Adafruit_SHT31 sht31 = Adafruit_SHT31();
 # define MYPRINTLN(...)  ({ \
   Serial.println(__VA_ARGS__);  \
   Serial1.println(__VA_ARGS__); \
+  delay(1000); \
 })
 
 const unsigned long GREE_OPEN[2] = {0x9050040A, 0x4000F};
@@ -62,6 +63,7 @@ void setup() {
 }
 
 void loop() {
+  unsigned long start = millis();
   float t = sht31.readTemperature();
   float h = sht31.readHumidity();
   if(!isnan(t) && !isnan(h)) {
@@ -69,6 +71,8 @@ void loop() {
     MYPRINT(t);
     MYPRINT(",");
     MYPRINTLN(h);
+
+    MYPRINTLN("LOG: Check temperature");
     if (t < 26.0) {
       if (mode != MODE_UP) {
         irsend.sendGREE(GREE_27[0], GREE_27[1]);
@@ -89,6 +93,7 @@ void loop() {
       }
     }
 
+    MYPRINTLN("LOG: Check humidity");
     if (h < 60.0) {
       if (hum_mode != HUM_MODE_ON) {
         MYPRINTLN("CMD: TURN_ON_SWITCH");
@@ -105,6 +110,13 @@ void loop() {
   } else {
     MYPRINTLN("LOG: SHT31 - Cannot get temperature...");
   }
-  delay(60000);
+
+  unsigned long duration = 0;
+  if ((start + 60000) < start) { // Check if overflow
+    unsigned long MAX = -1;
+    duration = MAX - start;
+    delay(duration);
+  }
+  delay(60000 - duration);
 }
 
