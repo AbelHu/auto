@@ -41,11 +41,40 @@ Adafruit_SHT31 sht31 = Adafruit_SHT31();
   delay(1000); \
 })
 
-const unsigned long GREE_OPEN[2] = {0x9050040A, 0x4000F};
-const unsigned long GREE_CLOSE[2] = {0x8050040A, 0x4000E};
-const unsigned long GREE_25[2] = {0x9090040A, 0x40007};
-const unsigned long GREE_26[2] = {0x9050040A, 0x4000F};
-const unsigned long GREE_27[2] = {0x90D0040A, 0x40000};
+#define DEVICE_BEDROOM   0
+#define DEVICE_LIVING_ROOM 1
+
+#define CMD_OPEN 0
+#define CMD_CLOSE 1
+#define CMD_COOL_24 2
+#define CMD_COOL_25 3
+#define CMD_COOL_26 4
+#define CMD_COOL_27 5
+#define CMD_COOL_28 6
+
+const unsigned long GREE_CMD_BEDROOM[7][2] = {
+  {0x9050040A, 0x4000F},  // OPEN
+  {0x8050040A, 0x4000E},  // CLOSE
+  {0x9010040A, 0x84000B}, // 24
+  {0x9090040A, 0x40007},  // 25
+  {0x9050040A, 0x4000F},  // 26
+  {0x90D0040A, 0x40000},  // 27
+  {0x9030040A, 0x840008}  // 28
+};
+
+const unsigned long GREE_CMD_LIVING_ROOM[7][2] = {
+  {0x9050040A, 0x4000F}, // OPEN
+  {0x8010040A, 0x4000A}, // CLOSE
+  {0x9010040A, 0x4000B}, // 24
+  {0x9090040A, 0x40007}, // 25
+  {0x9050040A, 0x4000F}, // 26
+  {0x90D0040A, 0x40000}, // 27
+  {0x9030040A, 0x40008}  // 28
+};
+
+void control_temperature(int cmd) {
+  irsend.sendGREE(GREE_CMD_BEDROOM[cmd][0], GREE_CMD_BEDROOM[cmd][1]);
+}
 
 void setup() {
   Serial1.begin(57600);
@@ -62,6 +91,8 @@ void setup() {
   MYPRINTLN("LOG: Found SHT31");
 }
 
+int count = 0;
+
 void loop() {
   unsigned long start = millis();
   float t = sht31.readTemperature();
@@ -75,29 +106,49 @@ void loop() {
     MYPRINTLN("LOG: Check temperature");
     if (t < 26.0) {
       if (mode != MODE_UP) {
-        irsend.sendGREE(GREE_27[0], GREE_27[1]);
-        MYPRINTLN("LOG: Temperature < 26.00, turn up to 27");
+        control_temperature(CMD_COOL_27);
         mode = MODE_UP;
+        count = 0;
+        MYPRINTLN("LOG: Temperature < 26.00, turn up to 27");
+      } else if (mode == MODE_UP) {
+        if (count < 5) {
+          count++;
+        } else if (count == 5) {
+          control_temperature(CMD_COOL_28);
+          count = 6;
+          MYPRINTLN("LOG: Temperature < 26.00 for > 5 minutes, turn up to 28");
+        }
       }
     } else if (t > 26.5) {
       if (mode != MODE_DOWN) {
-        irsend.sendGREE(GREE_25[0], GREE_25[1]);
-        MYPRINTLN("LOG: Temperature > 26.50, turn down to 25");
+        control_temperature(CMD_COOL_25);
         mode = MODE_DOWN;
+        count = 0;
+        MYPRINTLN("LOG: Temperature > 26.50, turn down to 25");
+      } else if (mode == MODE_DOWN) {
+        if (count < 5) {
+          count++;
+        } else if (count == 5) {
+          control_temperature(CMD_COOL_24);
+          count = 6;
+          MYPRINTLN("LOG: Temperature < 26.00 for > 5 minutes, turn down to 24");
+        }
       }
     } else {
       switch(mode) {
         case MODE_UP:
           if (t > 26.2) {
+            control_temperature(CMD_COOL_26);
             mode = MODE_ZERO;
-            irsend.sendGREE(GREE_26[0], GREE_26[1]);
+            count = 0;
             MYPRINTLN("LOG: Temperature is good, change to 26");
           }
           break;
         case MODE_DOWN:
           if (t < 26.3) {
+            control_temperature(CMD_COOL_26);
             mode = MODE_ZERO;
-            irsend.sendGREE(GREE_26[0], GREE_26[1]);
+            count = 0;
             MYPRINTLN("LOG: Temperature is good, change to 26");
           }
           break;
